@@ -1,0 +1,28 @@
+{
+  "short_name": "Easy BG Remover",
+  "name": "Easy BG Remover - AI Background Removal Tool",
+  "description": "Remove backgrounds from images instantly with our free AI-powered background remover",
+  "icons": [
+    {
+      "src": "favicon.png",
+      "type": "image/png",
+      "sizes": "any"
+    },
+    {
+      "src": "favicon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "favicon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#4f46e5",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "categories": ["photo", "utilities", "productivity"]
+}
