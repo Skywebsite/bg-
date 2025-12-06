@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 function ImagePreview({ title, imageUrl }) {
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
@@ -10,6 +12,8 @@ function ImagePreview({ title, imageUrl }) {
             src={imageUrl}
             alt={title}
             className="w-full h-full object-contain"
+            loading="lazy"
+            decoding="async"
           />
         </div>
       </div>
@@ -17,5 +21,5 @@ function ImagePreview({ title, imageUrl }) {
   )
 }
 
-export default ImagePreview
+export default memo(ImagePreview)
 

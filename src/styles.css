@@ -29,3 +29,24 @@ body {
   -webkit-transform: translateZ(0);
 }
 
+/* Video performance optimizations */
+video {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: auto;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Reduce repaints and reflows */
+img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Optimize canvas rendering */
+canvas {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
+}
+

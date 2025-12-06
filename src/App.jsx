@@ -1,8 +1,8 @@
-import { useState, useMemo, memo } from 'react'
+import { useState, memo } from 'react'
 import { DotLottieReact } from '@lottiefiles/dotlottie-react'
 import UploadBox from './components/UploadBox'
 import ImagePreview from './components/ImagePreview'
-import bgVideo from './7385122-uhd_3840_2160_30fps.mp4'
+import bgImage from './pexels-lum3n-44775-406014.jpg'
 
 // Memoized Lottie loader component for better performance
 const LottieLoader = memo(() => (
@@ -25,8 +25,12 @@ const LottieLoader = memo(() => (
 ))
 LottieLoader.displayName = 'LottieLoader'
 
+// Memoized ImagePreview for better performance
+const MemoizedImagePreview = memo(ImagePreview)
+MemoizedImagePreview.displayName = 'MemoizedImagePreview'
+
 // Helper function to resize image for faster processing
-function resizeImage(file, maxWidth = 1024, maxHeight = 1024) {
+function resizeImage(file, maxWidth = 512, maxHeight = 512) {
   return new Promise((resolve) => {
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -35,29 +39,31 @@ function resizeImage(file, maxWidth = 1024, maxHeight = 1024) {
         let width = img.width
         let height = img.height
 
-        // Calculate new dimensions
-        if (width > height) {
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width
-            width = maxWidth
-          }
-        } else {
-          if (height > maxHeight) {
-            width = (width * maxHeight) / height
-            height = maxHeight
-          }
+        // Calculate new dimensions - more aggressive resizing for speed
+        const ratio = Math.min(maxWidth / width, maxHeight / height)
+        if (ratio < 1) {
+          width = Math.floor(width * ratio)
+          height = Math.floor(height * ratio)
         }
 
-        // Create canvas and resize
+        // Create canvas and resize with optimized settings
         const canvas = document.createElement('canvas')
         canvas.width = width
         canvas.height = height
-        const ctx = canvas.getContext('2d')
+        const ctx = canvas.getContext('2d', { 
+          willReadFrequently: false,
+          desynchronized: true 
+        })
+        
+        // Use faster image smoothing
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'low'
         ctx.drawImage(img, 0, 0, width, height)
 
+        // Lower quality for faster processing
         canvas.toBlob((blob) => {
           resolve(blob || file)
-        }, file.type, 0.9)
+        }, file.type, 0.8)
       }
       img.src = e.target.result
     }
@@ -105,9 +111,9 @@ function App() {
     setProcessingProgress(10)
 
     try {
-      // Step 1: Resize image if needed (for faster processing)
+      // Step 1: Resize image aggressively for faster processing
       setProcessingProgress(20)
-      const resizedBlob = await resizeImage(file, 1024, 1024)
+      const resizedBlob = await resizeImage(file, 512, 512)
       setProcessingProgress(40)
 
       // Step 2: Convert to ArrayBuffer
@@ -117,47 +123,49 @@ function App() {
 
       // Step 3: Import and use background removal
       setProcessingProgress(60)
-      console.log('Loading background removal library...')
       const { removeBackground } = await import('@imgly/background-removal')
-      console.log('Library loaded, starting processing...')
       
-      // Create a timeout promise
+      // Create a shorter timeout promise for faster feedback
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Processing timeout after 2 minutes')), 120000)
+        setTimeout(() => reject(new Error('Processing timeout after 90 seconds')), 90000)
       })
 
-      // Process with timeout - try passing as Blob first, fallback to Uint8Array
+      // Process with optimized settings for speed
       setProcessingProgress(70)
       let blob
       try {
-        // Try with Blob (often works better)
-        console.log('Processing with Blob...')
+        // Use Blob with optimized options for faster processing
         blob = await Promise.race([
           removeBackground(resizedBlob, {
+            model: 'medium', // Use medium model for balance between speed and quality
+            output: {
+              format: 'image/png',
+              quality: 0.9
+            },
             progress: (key, current, total) => {
               const progress = 70 + Math.floor((current / total) * 25)
               setProcessingProgress(Math.min(progress, 95))
-              console.log(`Progress: ${key} ${current}/${total} (${progress}%)`)
             }
           }),
           timeoutPromise
         ])
-        console.log('Processing complete!')
       } catch (blobError) {
         // Fallback to Uint8Array if Blob doesn't work
-        console.log('Blob method failed, trying with Uint8Array...', blobError)
         setProcessingProgress(70)
         blob = await Promise.race([
           removeBackground(uint8Array, {
+            model: 'medium',
+            output: {
+              format: 'image/png',
+              quality: 0.9
+            },
             progress: (key, current, total) => {
               const progress = 70 + Math.floor((current / total) * 25)
               setProcessingProgress(Math.min(progress, 95))
-              console.log(`Progress: ${key} ${current}/${total} (${progress}%)`)
             }
           }),
           timeoutPromise
         ])
-        console.log('Processing complete with Uint8Array!')
       }
 
       setProcessingProgress(95)
@@ -186,14 +194,19 @@ function App() {
   }
 
   const handleReset = () => {
-    // Clean up object URLs
-    if (originalImage) URL.revokeObjectURL(originalImage)
-    if (processedImage) URL.revokeObjectURL(processedImage)
+    // Clean up object URLs to prevent memory leaks
+    if (originalImage) {
+      URL.revokeObjectURL(originalImage)
+    }
+    if (processedImage) {
+      URL.revokeObjectURL(processedImage)
+    }
     
     setOriginalImage(null)
     setProcessedImage(null)
     setError(null)
     setIsProcessing(false)
+    setProcessingProgress(0)
   }
 
   const handleDownload = () => {
@@ -208,49 +221,46 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen py-8 px-4 relative overflow-hidden">
-      {/* Background Video Animation */}
-      <div 
-        className="fixed inset-0 z-0 pointer-events-none"
-        style={{
-          willChange: 'transform',
-          transform: 'translateZ(0)',
-          backfaceVisibility: 'hidden',
-          perspective: '1000px',
-          margin: 0,
-          padding: 0,
-          width: '100vw',
-          height: '100vh',
-          overflow: 'hidden',
-          isolation: 'isolate',
-          contain: 'layout style paint',
-        }}
-      >
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
+    <div className={`min-h-screen py-8 px-4 relative overflow-hidden ${!originalImage ? '' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
+      {/* Background Image - Only show on home page */}
+      {!originalImage && (
+        <div 
+          className="fixed inset-0 z-0 pointer-events-none"
           style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate3d(-50%, -50%, 0)',
-            minWidth: '100%',
-            minHeight: '100%',
+            margin: 0,
+            padding: 0,
             width: '100vw',
             height: '100vh',
-            objectFit: 'cover',
-            willChange: 'auto',
+            overflow: 'hidden',
           }}
         >
-          <source src={bgVideo} type="video/mp4" />
-        </video>
-      </div>
+          <img
+            src={bgImage}
+            alt="Background"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              minWidth: '100%',
+              minHeight: '100%',
+              width: '100vw',
+              height: '100vh',
+              objectFit: 'cover',
+            }}
+            loading="eager"
+            decoding="async"
+          />
+        </div>
+      )}
       
       <div className="max-w-6xl mx-auto relative z-10">
         <header className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 inline-block px-6 py-3 bg-black/50 backdrop-blur-sm rounded-lg drop-shadow-lg">
+          <h1 className={`text-4xl md:text-5xl font-bold mb-2 inline-block px-6 py-3 rounded-lg drop-shadow-lg ${
+            !originalImage 
+              ? 'text-white bg-black/50 backdrop-blur-sm' 
+              : 'text-gray-800 bg-white/90'
+          }`}>
             Easy BG Remover
           </h1>
         </header>
@@ -294,13 +304,13 @@ function App() {
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {originalImage && (
-                <ImagePreview
+                <MemoizedImagePreview
                   title="Original"
                   imageUrl={originalImage}
                 />
               )}
               {processedImage && (
-                <ImagePreview
+                <MemoizedImagePreview
                   title="Background Removed"
                   imageUrl={processedImage}
                 />
@@ -327,13 +337,19 @@ function App() {
         )}
 
         <footer className="mt-12 text-center">
-          <p className="text-white text-sm drop-shadow-lg">
+          <p className={`text-sm drop-shadow-lg ${
+            !originalImage ? 'text-white' : 'text-gray-600'
+          }`}>
             Powered by{' '}
             <a 
               href="https://www.skywebdev.xyz" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-white hover:text-indigo-200 underline transition-colors"
+              className={`underline transition-colors ${
+                !originalImage 
+                  ? 'text-white hover:text-indigo-200' 
+                  : 'text-indigo-600 hover:text-indigo-800'
+              }`}
             >
               Skyweb IT Solution Pvt Ltd
             </a>
