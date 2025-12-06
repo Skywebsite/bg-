@@ -245,9 +245,9 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingProgress, setProcessingProgress] = useState(0)
   const [error, setError] = useState(null)
-  const [activeFeature, setActiveFeature] = useState('voice-to-text') // Track active feature - default to Voice to Text
+  const [activeFeature, setActiveFeature] = useState('voice-to-text') // Track active feature - default to Voice to Image
   
-  // Voice to Text states
+  // Voice to Image states
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [recognition, setRecognition] = useState(null)
@@ -562,14 +562,14 @@ function App() {
     }
   }
 
-  // Generate image from voice transcript - stays on Voice to Text page
+  // Generate image from voice transcript - stays on Voice to Image page
   const handleGenerateImageFromTranscript = async () => {
     if (!transcript.trim()) {
       setVoiceError('No transcript available. Please record your voice first.')
       return
     }
 
-    // Generate image directly without switching features - stay on voice-to-text page
+    // Generate image directly without switching features - stay on voice-to-image page
     await handleGenerateImage(transcript.trim())
   }
 
@@ -597,10 +597,11 @@ function App() {
     try {
       console.log('Starting image generation with prompt:', promptText)
       
-      // Call backend API - use proxy in development (empty string uses relative URL through Vite proxy)
-      // In production, use VITE_API_URL or default to localhost:3001
-      const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '' : 'http://localhost:3001')
-      const apiEndpoint = `${API_URL}/api/generate-image`
+      // Call backend API - use Vercel backend or fallback to local dev
+      const API_URL = import.meta.env.VITE_API_URL || 'https://server-bg.vercel.app'
+      // Ensure no double slashes in URL
+      const baseUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL
+      const apiEndpoint = `${baseUrl}/api/generate-image`
       console.log('Calling API endpoint:', apiEndpoint)
       const response = await fetch(apiEndpoint, {
         method: 'POST',
@@ -728,7 +729,7 @@ function App() {
                 <div className="mb-2 flex items-center justify-center h-7 sm:h-8">
                   <VoiceToTextIcon />
                 </div>
-                <div>Voice to Text</div>
+                <div>Voice to Image</div>
               </button>
               
               <button
@@ -798,8 +799,8 @@ function App() {
                     </div>
                   </div>
                 )}
-                <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2 drop-shadow-sm">Voice to Text</h2>
-                <p className="text-gray-800 text-sm sm:text-base drop-shadow-sm">Speak clearly and your words will be converted to text in real-time</p>
+                <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2 drop-shadow-sm">Voice to Image</h2>
+                <p className="text-gray-800 text-sm sm:text-base drop-shadow-sm">Speak clearly and your words will be converted to text, then generate an image</p>
               </div>
 
               {voiceError && (
@@ -917,7 +918,7 @@ function App() {
                 </div>
               )}
 
-              {/* Generated Image Display within Voice to Text */}
+              {/* Generated Image Display within Voice to Image */}
               {isGenerating && (
                 <div className="mt-6 text-center">
                   <div className="flex justify-center items-center mb-4">
