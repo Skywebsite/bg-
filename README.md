@@ -1,6 +1,12 @@
 # Background Remover
 
-A frontend-only web application that removes backgrounds from images using AI-powered WebAssembly technology. Everything runs entirely in the browser - no backend required!
+A full-stack web application that removes backgrounds from images and generates images from text using AI-powered technology. Features include Voice to Text, Text to Image, Background Removal, and Image Compression.
+
+## Architecture
+
+- **Frontend**: React + Vite + TailwindCSS
+- **Backend**: Node.js + Express
+- **APIs**: Bytez.js (Text to Image), @imgly/background-removal (Background Removal)
 
 ## Features
 
@@ -28,20 +34,54 @@ A frontend-only web application that removes backgrounds from images using AI-po
 
 1. Clone or download this repository
 
-2. Install dependencies:
+2. Install frontend dependencies:
 ```bash
 npm install
 ```
 
+3. Install backend dependencies:
+```bash
+cd server
+npm install
+cd ..
+```
+
+4. Set up environment variables:
+
+**Frontend (.env in root):**
+```env
+VITE_API_URL=http://localhost:3001
+```
+
+**Backend (server/.env):**
+```env
+PORT=3001
+BYTEZ_API_KEY=your_bytez_api_key_here
+```
+
+Copy `server/.env.example` to `server/.env` and add your API keys.
+
 ### Development
 
-Start the development server:
+**Start backend server:**
+```bash
+npm run server
+# or
+cd server && npm run dev
+```
 
+**Start frontend (in a new terminal):**
 ```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`
+**Or start both together (if you have concurrently installed):**
+```bash
+npm run dev:all
+```
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:3001`
 
 ### Build for Production
 
@@ -146,3 +186,4 @@ If background removal is taking more than 2 minutes:
 - Images are automatically resized to 1024px max for optimal performance
 - The first load downloads WebAssembly models (~10-20MB) - this is cached for future use
 - Processing typically takes 10-30 seconds after models are loaded
+

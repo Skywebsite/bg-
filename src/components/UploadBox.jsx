@@ -41,17 +41,17 @@ function UploadBox({ onImageSelect, isProcessing }) {
   }, [onImageSelect, isProcessing])
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto px-2">
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={`
-          border-2 border-dashed rounded-xl p-12 text-center
-          transition-all duration-200 cursor-pointer
+          border-2 border-dashed rounded-xl p-6 sm:p-8 md:p-12 text-center
+          transition-all duration-200 cursor-pointer touch-manipulation backdrop-blur-md
           ${isDragging 
-            ? 'border-indigo-500 bg-indigo-50 scale-105' 
-            : 'border-gray-300 bg-white hover:border-indigo-400 hover:bg-indigo-50'
+            ? 'border-indigo-400 bg-indigo-500/30 scale-[1.02] sm:scale-105' 
+            : 'border-white/40 bg-white/30 hover:border-indigo-400/60 hover:bg-white/40 active:scale-[0.98]'
           }
           ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}
         `}
@@ -66,13 +66,14 @@ function UploadBox({ onImageSelect, isProcessing }) {
           disabled={isProcessing}
         />
 
-        <div className="space-y-4">
-          <div className="mx-auto w-16 h-16 text-indigo-500">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 text-indigo-500">
             <svg
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
+              className="w-full h-full"
             >
               <path
                 strokeLinecap="round"
@@ -84,20 +85,20 @@ function UploadBox({ onImageSelect, isProcessing }) {
           </div>
 
           <div>
-            <p className="text-xl font-semibold text-gray-700 mb-2">
+            <p className="text-lg sm:text-xl font-semibold text-gray-900 mb-2 px-2 drop-shadow-sm">
               {isDragging ? 'Drop your image here' : 'Drag & drop your image here'}
             </p>
-            <p className="text-gray-500 mb-4">or</p>
+            <p className="text-gray-700 mb-3 sm:mb-4 text-sm sm:text-base drop-shadow-sm">or</p>
             <button
               type="button"
               disabled={isProcessing}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2.5 sm:py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 active:bg-indigo-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation text-sm sm:text-base"
             >
               Browse Files
             </button>
           </div>
 
-          <p className="text-sm text-gray-400">
+          <p className="text-xs sm:text-sm text-gray-600 px-2 drop-shadow-sm">
             Supports JPG, PNG, WebP and other image formats
           </p>
         </div>

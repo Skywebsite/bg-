@@ -2,12 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Giaza Font - If you have the Giaza font file, uncomment and add the path */
+/* @font-face {
+  font-family: 'Giaza';
+  src: url('/fonts/Giaza-Regular.woff2') format('woff2'),
+       url('/fonts/Giaza-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Giaza';
+  src: url('/fonts/Giaza-Bold.woff2') format('woff2'),
+       url('/fonts/Giaza-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+} */
+
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
   overflow-x: hidden;
+  /* Improve scrolling on mobile */
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
@@ -16,11 +37,20 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent text size adjust on mobile */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* Performance optimizations for animations */
 * {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch action optimizations for mobile */
+button, a {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
 }
 
 /* GPU acceleration for smoother animations */
@@ -38,15 +68,152 @@ video {
   -webkit-backface-visibility: hidden;
 }
 
-/* Reduce repaints and reflows */
+/* Optimize image rendering for mobile */
 img {
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
+  image-rendering: auto;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Prevent image dragging on mobile */
+  -webkit-user-drag: none;
+  pointer-events: auto;
 }
 
 /* Optimize canvas rendering */
 canvas {
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: pixelated;
+  image-rendering: auto;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Progress Bar Styles */
+.progress-bar-fill {
+  background: linear-gradient(90deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+}
+
+.progress-bar-shimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Smooth progress bar animation */
+.progress-bar-fill {
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Giaza Font Styling for Header */
+.app-header-title {
+  font-family: 'Giaza', 'Playfair Display', 'Cormorant Garamond', 'Cinzel', serif;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  line-height: 1.2;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/* Feature Buttons Styling */
+.feature-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+  will-change: transform, background-color;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.feature-btn:not(.bg-indigo-600) {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.feature-btn.bg-indigo-600 {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Icon styling */
+.feature-btn svg {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: block;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.feature-btn:hover:not(.bg-indigo-600):not(:active) svg {
+  transform: scale(1.08);
+}
+
+.feature-btn.bg-indigo-600 svg {
+  transform: scale(1);
+}
+
+/* Prevent layout shift and icon merging */
+.feature-btn > div:first-child {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  /* Optimize image loading on mobile */
+  img[loading="lazy"] {
+    content-visibility: auto;
+  }
+  
+  /* Reduce repaints on scroll */
+  body {
+    will-change: scroll-position;
+  }
+  
+  /* Optimize text rendering on mobile */
+  * {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeSpeed;
+  }
+  
+  /* Prioritize essential content */
+  img, video, canvas {
+    image-rendering: -webkit-optimize-contrast;
+  }
+  
+  /* Slower shimmer on mobile for better performance */
+  .progress-bar-shimmer {
+    animation-duration: 3s;
+  }
 }
 
