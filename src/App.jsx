@@ -2,6 +2,10 @@ import { useState, useEffect, memo } from 'react'
 import { DotLottieReact } from '@lottiefiles/dotlottie-react'
 import UploadBox from './components/UploadBox'
 import ImagePreview from './components/ImagePreview'
+import VoiceToImageSection from './components/VoiceToImageSection'
+import TextToImageSection from './components/TextToImageSection'
+import BGRemoverSection from './components/BGRemoverSection'
+import ImageCompressorSection from './components/ImageCompressorSection'
 import logoImage from './components/Black White Minimal Simple Modern  Classic  Photography Studio Salt Logo.png'
 
 // Memoized Lottie loader component for better performance
@@ -239,6 +243,25 @@ function resizeImage(file, maxWidth = 512, maxHeight = 512) {
   })
 }
 
+function formatBytes(bytes) {
+  if (typeof bytes !== 'number' || Number.isNaN(bytes)) return ''
+  if (bytes === 0) return '0 B'
+
+  const units = ['B', 'KB', 'MB', 'GB']
+  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  const value = bytes / Math.pow(1024, exponent)
+
+  return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`
+}
+
+function extensionFromMime(mime) {
+  if (!mime || typeof mime !== 'string') return 'webp'
+  if (mime.includes('jpeg') || mime.includes('jpg')) return 'jpg'
+  if (mime.includes('png')) return 'png'
+  if (mime.includes('webp')) return 'webp'
+  return 'webp'
+}
+
 function App() {
   const [originalImage, setOriginalImage] = useState(null)
   const [processedImage, setProcessedImage] = useState(null)
@@ -258,6 +281,15 @@ function App() {
   const [generatedImage, setGeneratedImage] = useState(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [imageError, setImageError] = useState(null)
+
+  // Image Compressor states
+  const [compressionInput, setCompressionInput] = useState(null)
+  const [compressedImage, setCompressedImage] = useState(null)
+  const [isCompressing, setIsCompressing] = useState(false)
+  const [compressionError, setCompressionError] = useState(null)
+  const [compressionStats, setCompressionStats] = useState(null)
+  const [compressionProgress, setCompressionProgress] = useState(0)
+  const [compressionFormat, setCompressionFormat] = useState('webp') // 'webp' or 'original'
 
   const handleImageSelect = async (file) => {
     // Reset states
@@ -412,6 +444,122 @@ function App() {
     link.click()
     document.body.removeChild(link)
   }
+
+  const resetCompression = () => {
+    if (compressionInput) {
+      URL.revokeObjectURL(compressionInput)
+    }
+
+    setCompressionInput(null)
+    setCompressedImage(null)
+    setCompressionStats(null)
+    setCompressionError(null)
+    setCompressionProgress(0)
+    setIsCompressing(false)
+  }
+
+  const handleDownloadCompressed = () => {
+    if (!compressedImage) return
+
+    const link = document.createElement('a')
+    link.href = compressedImage
+    const ext = extensionFromMime(compressionStats?.mimeType)
+    link.download = `compressed-image.${ext}`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const handleCompressSelect = async (file) => {
+    setCompressionError(null)
+    setCompressionStats(null)
+    setCompressedImage(null)
+    setCompressionProgress(0)
+
+    if (!file) {
+      setCompressionError('No file selected')
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setCompressionError('Please select a valid image file')
+      return
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      setCompressionError('Please choose an image smaller than 25MB')
+      return
+    }
+
+    if (compressionInput) {
+      URL.revokeObjectURL(compressionInput)
+    }
+
+    const previewUrl = URL.createObjectURL(file)
+    setCompressionInput(previewUrl)
+
+    setIsCompressing(true)
+    setCompressionProgress(20)
+
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      formData.append('quality', '80')
+      formData.append('width', '1600')
+      formData.append('format', compressionFormat)
+
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const baseUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL
+
+      const response = await fetch(`${baseUrl}/api/compress-image`, {
+        method: 'POST',
+        body: formData
+      })
+
+      setCompressionProgress(70)
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to compress image')
+      }
+
+      if (!data?.success || !data?.dataUrl) {
+        throw new Error('Invalid response from server')
+      }
+
+      setCompressedImage(data.dataUrl)
+      setCompressionStats({
+        originalSize: data.originalSize,
+        compressedSize: data.compressedSize,
+        quality: data.quality,
+        width: data.width,
+        mimeType: data.mimeType
+      })
+      setCompressionProgress(100)
+    } catch (err) {
+      console.error('Compression failed:', err)
+      setCompressionError(err?.message || 'Failed to compress image')
+      setCompressionProgress(0)
+    } finally {
+      setIsCompressing(false)
+      setTimeout(() => setCompressionProgress(0), 800)
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (compressionInput) {
+        URL.revokeObjectURL(compressionInput)
+      }
+    }
+  }, [compressionInput])
+
+  useEffect(() => {
+    if (activeFeature !== 'image-compressor') {
+      resetCompression()
+    }
+  }, [activeFeature])
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -598,7 +746,7 @@ function App() {
       console.log('Starting image generation with prompt:', promptText)
       
       // Call backend API - use Vercel backend or fallback to local dev
-      const API_URL = import.meta.env.VITE_API_URL || 'https://server-bg.vercel.app'
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
       // Ensure no double slashes in URL
       const baseUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL
       const apiEndpoint = `${baseUrl}/api/generate-image`
@@ -778,9 +926,14 @@ function App() {
         )}
 
         {!originalImage && activeFeature === 'bg-remover' && (
-          <UploadBox
-            onImageSelect={handleImageSelect}
+          <BGRemoverSection
+            handleImageSelect={handleImageSelect}
             isProcessing={isProcessing}
+            originalImage={originalImage}
+            processedImage={processedImage}
+            processingProgress={processingProgress}
+            handleDownload={handleDownload}
+            handleReset={handleReset}
           />
         )}
 
@@ -1134,19 +1287,133 @@ function App() {
         )}
 
         {!originalImage && activeFeature === 'image-compressor' && (
-          <div className="max-w-2xl mx-auto px-2">
-            <div className="bg-white/30 backdrop-blur-md rounded-xl p-8 sm:p-12 text-center border-2 border-dashed border-white/40 shadow-lg">
-              <div className="mb-4 flex items-center justify-center">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 text-indigo-600">
+          <div className="max-w-4xl mx-auto px-2 space-y-5">
+            <div className="bg-white/30 backdrop-blur-md rounded-xl p-6 sm:p-7 border border-white/40 shadow-lg">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 text-indigo-600">
                   <ImageCompressorIcon />
                 </div>
+                <div className="text-left">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 drop-shadow-sm">Image Compressor</h2>
+                  <p className="text-gray-800 text-sm sm:text-base">Upload a photo to compress it to WebP while keeping visual quality high.</p>
+                </div>
               </div>
-              <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2 drop-shadow-sm">Image Compressor</h2>
-              <p className="text-gray-800 mb-4 drop-shadow-sm">Coming soon! This feature will compress your images while maintaining quality.</p>
-              <button className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors opacity-50 cursor-not-allowed" disabled>
-                Compress Image
-              </button>
+              <p className="text-xs sm:text-sm text-gray-700">Uses server-side Sharp (quality 80, max width 1600px). Max upload 15MB.</p>
             </div>
+
+            <div className="max-w-2xl mx-auto bg-white/30 backdrop-blur-md border border-white/40 rounded-xl p-4 sm:p-5 shadow-sm">
+              <p className="text-sm sm:text-base font-semibold text-gray-900 mb-3 drop-shadow-sm">Choose compression type</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCompressionFormat('original')}
+                  className={`w-full px-4 py-3 rounded-lg border transition-colors text-left ${
+                    compressionFormat === 'original'
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-800 shadow-sm'
+                      : 'border-white/50 bg-white/30 text-gray-800 hover:border-indigo-300'
+                  }`}
+                >
+                  <div className="font-semibold">Size Compress</div>
+                  <div className="text-xs text-gray-700 mt-1">Keep original format (JPG/PNG) and reduce size</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCompressionFormat('webp')}
+                  className={`w-full px-4 py-3 rounded-lg border transition-colors text-left ${
+                    compressionFormat === 'webp'
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-800 shadow-sm'
+                      : 'border-white/50 bg-white/30 text-gray-800 hover:border-indigo-300'
+                  }`}
+                >
+                  <div className="font-semibold">Compressed (WebP)</div>
+                  <div className="text-xs text-gray-700 mt-1">Convert to WebP for maximum savings</div>
+                </button>
+              </div>
+            </div>
+
+            <UploadBox onImageSelect={handleCompressSelect} isProcessing={isCompressing} />
+
+            {compressionError && (
+              <div className="max-w-2xl mx-auto p-3 sm:p-4 bg-red-500/20 border border-red-400/60 text-red-800 rounded-lg text-sm sm:text-base">
+                {compressionError}
+              </div>
+            )}
+
+            {compressionProgress > 0 && (
+              <div className="max-w-2xl mx-auto w-full bg-white/50 backdrop-blur-md rounded-lg shadow-sm border border-white/40 p-3 sm:p-4">
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-600 transition-all duration-300"
+                    style={{ width: `${Math.min(compressionProgress, 100)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs sm:text-sm text-gray-700 mt-2">
+                  <span>Preparing...</span>
+                  <span className="font-semibold text-indigo-700">{Math.min(compressionProgress, 100)}%</span>
+                </div>
+              </div>
+            )}
+
+            {(compressionInput || compressedImage) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                {compressionInput && (
+                  <MemoizedImagePreview
+                    title="Original"
+                    imageUrl={compressionInput}
+                  />
+                )}
+                {compressedImage && (
+                  <MemoizedImagePreview
+                    title={compressionFormat === 'webp' ? 'Compressed (WebP)' : 'Compressed'}
+                    imageUrl={compressedImage}
+                  />
+                )}
+              </div>
+            )}
+
+            {compressionStats && (
+              <div className="max-w-2xl mx-auto bg-white/30 backdrop-blur-md border border-white/40 rounded-xl p-4 sm:p-5 shadow-sm">
+                <div className="flex items-center justify-between text-sm sm:text-base text-gray-800">
+                  <span className="font-medium">Original size</span>
+                  <span className="font-semibold text-gray-900">{formatBytes(compressionStats.originalSize)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm sm:text-base text-gray-800 mt-2">
+                  <span className="font-medium">Compressed size</span>
+                  <span className="font-semibold text-gray-900">{formatBytes(compressionStats.compressedSize)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm sm:text-base text-gray-800 mt-2">
+                  <span className="font-medium">Format</span>
+                  <span className="font-semibold text-gray-900 uppercase">{extensionFromMime(compressionStats.mimeType)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm sm:text-base text-gray-800 mt-2">
+                  <span className="font-medium">Saved</span>
+                  <span className="font-semibold text-emerald-700">
+                    {compressionStats?.originalSize && compressionStats?.compressedSize
+                      ? `${Math.max(0, Math.round((1 - (compressionStats.compressedSize / compressionStats.originalSize)) * 100))}%`
+                      : '--'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {(compressionInput || compressedImage) && (
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
+                {compressedImage && (
+                  <button
+                    onClick={handleDownloadCompressed}
+                    className="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-lg touch-manipulation"
+                  >
+                    {compressionFormat === 'webp' ? 'Download WebP' : 'Download Image'}
+                  </button>
+                )}
+                <button
+                  onClick={resetCompression}
+                  className="w-full sm:w-auto px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 active:bg-gray-400 transition-colors touch-manipulation"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1227,7 +1494,7 @@ function App() {
 
         <footer className="mt-8 sm:mt-12 mb-4 sm:mb-6 text-center px-2">
           <p className={`text-xs sm:text-sm drop-shadow-lg ${
-            !originalImage ? 'text-white' : 'text-gray-600'
+            !originalImage ? 'text-black' : 'text-gray-600'
           }`}>
             Powered by{' '}
             <a 
@@ -1236,7 +1503,7 @@ function App() {
               rel="noopener noreferrer"
               className={`underline transition-colors touch-manipulation ${
                 !originalImage 
-                  ? 'text-white hover:text-indigo-200 active:text-indigo-300' 
+                  ? 'text-black hover:text-indigo-700 active:text-indigo-800' 
                   : 'text-indigo-600 hover:text-indigo-800 active:text-indigo-900'
               }`}
             >
